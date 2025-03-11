@@ -12,7 +12,6 @@ import (
 	anthropic "github.com/anthropics/anthropic-sdk-go"
 )
 
-
 func init() {
 	functions.HTTP("GenerateTopics", generateTopics)
 }
@@ -75,17 +74,17 @@ func generateTopics(w http.ResponseWriter, r *http.Request) {
 		specialization = fmt.Sprintf(" in the area of %s", req.Specialization)
 	}
 
-	prompt := fmt.Sprintf(`Generate %d specific, interesting topics for an IELTS speaking game called "Hot Seat"%s. 
-Each topic should be specific and guessable, not too general. 
-For each topic, also provide exactly 5 forbidden words that would make the topic hard to describe if they cannot be used.
-Format your response as a JSON array of objects with "name" and "forbidden_words" properties.
-Example:
+	prompt := fmt.Sprintf(`Generate a specific, interesting topic for an IELTS speaking game called "Hot Seat"-%s. 
+The topic should be specific and guessable, not too general. 
+Also provide exactly %d forbidden words that would make the topic hard to describe if they cannot be used.
+Format your response as a JSON array of objects with "name" and "forbidden_words" properties. The array should have only 1 object.
+Example (if count was 5):
 [
   {
     "name": "Urban Beekeeping",
     "forbidden_words": ["honey", "hive", "sting", "pollinate", "queen"]
   }
-]`, req.Count, specialization)
+]`, specialization, req.Count)
 	message, err := client.Messages.New(context.TODO(), anthropic.MessageNewParams{
 		Model:     anthropic.F(anthropic.ModelClaude3_7SonnetLatest),
 		MaxTokens: anthropic.F(int64(1024)),
