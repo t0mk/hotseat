@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>IELTS Hot Seat Topic Generator</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 20px;
+      line-height: 1.6;
+    }
+    h1 {
+      text-align: center;
+      margin-bottom: 30px;
+      color: #2c3e50;
+    }
+    .controls {
+      background-color: #f8f9fa;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .form-group {
+      margin-bottom: 15px;
+      display: flex;
+      align-items: center;
+    }
+    label {
+      font-weight: bold;
+      min-width: 200px;
+    }
+    input {
+      padding: 8px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      flex-grow: 1;
+    }
+    button {
+      background-color: #3498db;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 16px;
+      transition: background-color 0.2s;
+    }
+    button:hover {
+      background-color: #2980b9;
+    }
+    button:disabled {
+      background-color: #95a5a6;
+      cursor: not-allowed;
+    }
+    .loader {
+      display: none;
+      margin: 20px auto;
+      text-align: center;
+    }
+    .loader::after {
+      content: " ";
+      display: inline-block;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      border: 6px solid #3498db;
+      border-color: #3498db transparent #3498db transparent;
+      animation: loader 1.2s linear infinite;
+    }
+    @keyframes loader {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    .topic-cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 20px;
+    }
+    .card {
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 20px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      background-color: white;
+    }
+    .card h2 {
+      margin-top: 0;
+      color: #2c3e50;
+      border-bottom: 2px solid #3498db;
+      padding-bottom: 10px;
+    }
+    .forbidden-words {
+      background-color: #ffebee;
+      padding: 15px;
+      border-radius: 6px;
+      margin-top: 15px;
+    }
+    .forbidden-words h3 {
+      color: #c62828;
+      margin-top: 0;
+      margin-bottom: 10px;
+      font-size: 1rem;
+    }
+    .words-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+    }
+    .word {
+      background-color: white;
+      padding: 8px;
+      border-radius: 4px;
+      text-align: center;
+      border: 1px solid #ef9a9a;
+      font-weight: bold;
+      color: #c62828;
+    }
+    .print-button {
+      background-color: #2c3e50;
+      margin-right: 10px;
+    }
+    .error {
+      color: #c62828;
+      font-weight: bold;
+      margin-top: 10px;
+      text-align: center;
+    }
+    @media print {
+      .controls, .print-button, .generate-button {
+        display: none;
+      }
+      .topic-cards {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      .card {
+        break-inside: avoid;
+        page-break-inside: avoid;
+      }
+    }
+  </style>
+</head>
+<body>
+  <h1>Hot Seat Topic Generator</h1>
+  
+  <div class="controls">
+    <div class="form-group">
+      <label for="count">Number of topics:</label>
+      <input type="number" id="count" min="1" max="10" value="4">
+    </div>
+    
+    <div class="form-group">
+      <label for="specialization">Specialization (optional):</label>
+      <input type="text" id="specialization" placeholder="e.g., technology, hobbies, environment">
+    </div>
+    
+    <div>
+      <button id="generateBtn" class="generate-button">Generate Topics</button>
+      <button id="printBtn" class="print-button" style="display: none;">Print Cards</button>
+    </div>
+    
+    <div id="error" class="error"></div>
+  </div>
+  
+  <div id="loader" class="loader"></div>
+  
+  <div id="topicCards" class="topic-cards"></div>
+  
+  <script>
+    // Replace with your actual Cloud Function URL
+    const API_URL = 'https://europe-west12-osloveni.cloudfunctions.net/hotseat';
+    
+    const generateBtn = document.getElementById('generateBtn');
+    const printBtn = document.getElementById('printBtn');
+    const countInput = document.getElementById('count');
+    const specializationInput = document.getElementById('specialization');
+    const loader = document.getElementById('loader');
+    const topicCards = document.getElementById('topicCards');
+    const errorDiv = document.getElementById('error');
+    
+    generateBtn.addEventListener('click', generateTopics);
+    printBtn.addEventListener('click', () => window.print());
+    
+    async function generateTopics() {
+      // Clear previous error messages
+      errorDiv.textContent = '';
+      
+      // Show loader and disable button
+      loader.style.display = 'block';
+      generateBtn.disabled = true;
+      printBtn.style.display = 'none';
+      topicCards.innerHTML = '';
+      
+      const count = parseInt(countInput.value) || 4;
+      const specialization = specializationInput.value.trim();
+      
+      try {
+        const response = await fetch(API_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            count: count,
+            specialization: specialization
+          })
+        });
+        
+        if (!response.ok) {
+          throw new Error(`Failed to generate topics (${response.status})`);
+        }
+        
+        const data = await response.json();
+        
+        if (!data.topics || !Array.isArray(data.topics)) {
+          throw new Error('Invalid response format');
+        }
+        
+        // Generate cards
+        data.topics.forEach(topic => {
+          const card = document.createElement('div');
+          card.className = 'card';
+          
+          card.innerHTML = `
+            <h2>${topic.name}</h2>
+            <div class="forbidden-words">
+              <h3>FORBIDDEN WORDS:</h3>
+              <div class="words-grid">
+                ${topic.forbidden_words.map(word => `<div class="word">${word}</div>`).join('')}
+              </div>
+            </div>
+          `;
+          
+          topicCards.appendChild(card);
+        });
+        
+        // Show print button if we have topics
+        if (data.topics.length > 0) {
+          printBtn.style.display = 'inline-block';
+        }
+      } catch (err) {
+        errorDiv.textContent = err.message || 'Failed to generate topics';
+        console.error('Error:', err);
+      } finally {
+        // Hide loader and enable button
+        loader.style.display = 'none';
+        generateBtn.disabled = false;
+      }
+    }
+  </script>
+</body>
+</html>
